@@ -7,6 +7,8 @@ services:
       - "MYSQL_DATABASE=app"
       - "MYSQL_USER=app"
       - "MYSQL_PASSWORD=app"
+    volumes:
+      - ./etc/primary.cnf:/etc/mysql/conf.d/primary.cnf
   replica:
     image: "mysql:5.7"
     environment:
@@ -14,14 +16,27 @@ services:
       - "MYSQL_DATABASE=app"
       - "MYSQL_USER=app"
       - "MYSQL_PASSWORD=app"
+    volumes:
+      - ./etc/replica.cnf:/etc/mysql/conf.d/replica.cnf
     depends_on:
       - primary
-  app:
-    build: .
+  setup:
+    image: "mysql:5.7"
+    environment:
+      - "PRIMARY_PASSWORD=primary"
+      - "REPLICA_PASSWORD=replica"
+    volumes:
+      - ./bin/setup-replication.sh:/setup-replication.sh
     depends_on:
       - primary
       - replica
+    command: /setup-replication.sh
+  app:
+    build: .
+    depends_on:
+      - setup
     volumes:
       - ./:/app
     ports:
       - "8001:8000"
+    entrypoint: /app/bin/entrypoint.sh
